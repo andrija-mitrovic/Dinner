@@ -1,9 +1,6 @@
-using Dinner.API.Errors;
-using Dinner.API.Filters;
-using Dinner.API.Middleware;
+using Dinner.API.Common.Errors;
 using Dinner.Application;
 using Dinner.Infrastructure;
-using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -13,6 +10,7 @@ var builder = WebApplication.CreateBuilder(args);
         .AddInfrastructure(builder.Configuration);
     // builder.Services.AddControllers(x=>x.Filters.Add<ErrorHandlingFilterAttribute>());
     builder.Services.AddControllers();
+
     builder.Services.AddSingleton<ProblemDetailsFactory, DinnerProblemDetailsFactory>();
 }
 

@@ -1,12 +1,13 @@
 ﻿using Dinner.Application.Services.Authentication;
 using Dinner.Contracts.Authentication;
+using ErrorOr;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Dinner.API.Controllers
 {
     [Route("auth")]
     [ApiController]
-    public class AuthenticationController : ControllerBase
+    public class AuthenticationController : ApiController
     {
         private readonly IAuthenticationService _authenticationService;
 
@@ -18,20 +19,26 @@ namespace Dinner.API.Controllers
         [HttpPost("register")]
         public IActionResult Register(RegisterRequest request)
         {
-            var authResult = _authenticationService.Register(
-                request.FirstName, 
-                request.LastName, 
-                request.Email, 
+            ErrorOr<AuthenticationResult> authResult = _authenticationService.Register(
+                request.FirstName,
+                request.LastName,
+                request.Email,
                 request.Password);
 
-            var response = new AuthenticationResponse(
+            return authResult.Match(
+                authResult => Ok(MapAuthResult(authResult)),
+                errors => Problem(errors)
+                );
+        }
+
+        private static AuthenticationResponse MapAuthResult(AuthenticationResult authResult)
+        {
+            return new AuthenticationResponse(
                 authResult.User.Id,
                 authResult.User.FirstName,
                 authResult.User.LastName,
                 authResult.User.Email,
                 authResult.Token);
-
-            return Ok(response);
         }
 
         [HttpPost("login")]
@@ -41,14 +48,16 @@ namespace Dinner.API.Controllers
                 request.Email,
                 request.Password);
 
-            var response = new AuthenticationResponse(
-                authResult.User.Id,
-                authResult.User.FirstName,
-                authResult.User.LastName,
-                authResult.User.Email,
-                authResult.Token);
+            if (authResult.IsError && authResult.FirstError == Domain.Common.Errors.Errors.Authentication.InvalidCredentials)
+            {
+                return Problem(
+                    statusCode: StatusCodes.Status401Unauthorized,
+                    title: authResult.FirstError.Description);
+            }
 
-            return Ok(response);
+            return authResult.Match(
+                authResult => Ok(MapAuthResult(authResult)),
+                errors => Problem(errors));
         }
     }
 }
